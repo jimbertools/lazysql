@@ -1,4 +1,4 @@
-//go:build !disable_sqlite_import
+//go:build enable_sqlite_import
 
 package drivers
 
