@@ -21,7 +21,7 @@ func (db *SQLite) TestConnection(urlstr string) (err error) {
 func (db *SQLite) Connect(urlstr string) (err error) {
 	db.SetProvider(DriverSqlite)
 
-	db.Connection, err = sql.Open("sqlite", urlstr)
+	db.Connection, err = sql.Open("sqlite3", urlstr)
 	if err != nil {
 		return err
 	}
