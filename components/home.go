@@ -37,7 +37,7 @@ type Home struct {
 }
 
 func NewHomePage(connection models.Connection, dbdriver drivers.Driver) *Home {
-	tree := NewTree(connection.DBName, dbdriver)
+	tree := NewTree(connection.DBName, dbdriver, connection.Schemas)
 	leftWrapper := tview.NewFlex()
 	rightWrapper := tview.NewFlex()
 
@@ -105,7 +105,7 @@ func NewHomePage(connection models.Connection, dbdriver drivers.Driver) *Home {
 	rightWrapper.AddItem(tabbedPane.HeaderContainer, 1, 0, false)
 	rightWrapper.AddItem(tabbedPane.Pages, 0, 1, false)
 
-	maincontent.AddItem(leftWrapper, 30, 1, false)
+	maincontent.AddItem(leftWrapper, app.App.Config().TreeWidth, 1, false)
 	maincontent.AddItem(rightWrapper, 0, 5, false)
 
 	home.AddItem(maincontent, 0, 1, false)
@@ -485,9 +485,11 @@ func (home *Home) homeInputCapture(event *tcell.EventKey) *tcell.EventKey {
 			mainPages.AddPage(pageNameDMLPreview, queryPreviewModal, true, true)
 		}
 	case commands.HelpPopup:
-		if table == nil || !table.GetIsEditing() {
-			mainPages.AddPage(pageNameHelp, home.HelpModal, true, true)
+		if table != nil && (table.GetIsEditing() || table.GetIsFiltering()) {
+			return event
 		}
+
+		mainPages.AddPage(pageNameHelp, home.HelpModal, true, true)
 	case commands.SearchGlobal:
 		if !home.leftWrapperVisible {
 			home.toggleLeftWrapper()
@@ -511,9 +513,13 @@ func (home *Home) homeInputCapture(event *tcell.EventKey) *tcell.EventKey {
 		home.QueryHistoryModal.queryHistoryComponent.LoadHistory(home.ConnectionIdentifier)
 		return nil
 	case commands.ToggleTree:
-		home.toggleLeftWrapper()
-		home.treePinned = home.leftWrapperVisible
-		return nil
+		if table != nil && !table.GetIsEditing() && !table.GetIsFiltering() {
+			home.toggleLeftWrapper()
+			home.treePinned = home.leftWrapperVisible
+			return nil
+		}
+
+		return event
 	}
 
 	return event
@@ -546,7 +552,7 @@ func (home *Home) toggleLeftWrapper() {
 		home.focusRightWrapper()
 	} else {
 		home.MainContent.Clear()
-		home.MainContent.AddItem(home.LeftWrapper, 30, 1, false)
+		home.MainContent.AddItem(home.LeftWrapper, app.App.Config().TreeWidth, 1, false)
 		home.MainContent.AddItem(home.RightWrapper, 0, 5, false)
 		home.leftWrapperVisible = true
 		home.focusLeftWrapper()

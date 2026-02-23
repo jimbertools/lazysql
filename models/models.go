@@ -11,6 +11,8 @@ type AppConfig struct {
 	DisableSidebar               bool
 	SidebarOverlay               bool
 	MaxQueryHistoryPerConnection int
+	TreeWidth                    int
+	JSONViewerWordWrap           bool
 }
 
 type Connection struct {
@@ -30,13 +32,20 @@ type Connection struct {
 
 	ReadOnly bool
 
+	// Schemas filters the schemas shown in the tree (PostgreSQL/MSSQL only).
+	// If empty, all schemas are shown.
+	Schemas []string
+
 	Commands []*Command
 }
+
+type KeymapConfig map[string]map[string]string
 
 type Command struct {
 	Command      string
 	WaitForPort  string
 	SaveOutputTo string
+	Timeout      int // Timeout in seconds for command to start (default: 5)
 }
 
 type StateChange struct {

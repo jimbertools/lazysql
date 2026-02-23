@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/pelletier/go-toml/v2"
 
@@ -16,6 +17,7 @@ type Config struct {
 	ConfigFile  string
 	AppConfig   *models.AppConfig   `toml:"application"`
 	Connections []models.Connection `toml:"database"`
+	Keymaps     models.KeymapConfig `toml:"keymap"`
 }
 
 func defaultConfig() *Config {
@@ -24,6 +26,8 @@ func defaultConfig() *Config {
 			DefaultPageSize:              300,
 			SidebarOverlay:               false,
 			MaxQueryHistoryPerConnection: 100,
+			TreeWidth:                    30,
+			JSONViewerWordWrap:           false,
 		},
 	}
 }
@@ -58,7 +62,10 @@ func LoadConfig(configFile string) error {
 		return err
 	}
 
-	err = toml.Unmarshal(file, App.config)
+	// Expand environment variables in the config file before parsing
+	expanded := expandEnvVars(string(file))
+
+	err = toml.Unmarshal([]byte(expanded), App.config)
 	if err != nil {
 		return err
 	}
@@ -67,7 +74,24 @@ func LoadConfig(configFile string) error {
 		App.config.Connections[i].URL = parseConfigURL(&conn)
 	}
 
+	if err := ApplyKeymapConfig(App.config.Keymaps); err != nil {
+		return err
+	}
+
 	return nil
+}
+
+// expandEnvVars expands environment variables in the format ${env:VAR_NAME}.
+// Variables without the "env:" prefix (e.g., ${port}) are left unchanged
+// to maintain compatibility with dynamic variables used at connection time.
+func expandEnvVars(s string) string {
+	return os.Expand(s, func(key string) string {
+		if envKey, found := strings.CutPrefix(key, "env:"); found {
+			return os.Getenv(envKey)
+		}
+		// Keep non-env variables unchanged (e.g., ${port})
+		return "${" + key + "}"
+	})
 }
 
 func (c *Config) SaveConnections(connections []models.Connection) error {
